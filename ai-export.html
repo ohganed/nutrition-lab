@@ -95,7 +95,7 @@ async function scan(){
   input.checked=keep.size?keep.has(item.key):hasPrimary?item.key===idbKey:item.key==='nutrition-lab:v1';
   const body=document.createElement('span');const name=document.createElement('strong');name.textContent=item.key;
   const detail=document.createElement('small');
-  detail.textContent='\\n'+item.value.length.toLocaleString()+'文字 / '+(Array.isArray(item.parsed)?'配列 '+item.parsed.length+'件':item.parsed!==null&&typeof item.parsed==='object'?'オブジェクト':'テキスト');
+  detail.textContent='\n'+item.value.length.toLocaleString()+'文字 / '+(Array.isArray(item.parsed)?'配列 '+item.parsed.length+'件':item.parsed!==null&&typeof item.parsed==='object'?'オブジェクト':'テキスト');
   detail.style.whiteSpace='pre-line';body.append(name,detail);row.append(input,body);$('keys').append(row);
  }
  status(hasPrimary?'Nutrition Labの保存記録（IndexedDB）が見つかりました。通常は先頭の項目だけを選んでください。':state.items.length?'候補 '+state.items.length+' 件が見つかりました。記録データを選んでください。':'記録が見つかりません。同じアプリ画面で食事を記録した後、もう一度お試しください。');
