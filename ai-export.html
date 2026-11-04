@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Nutrition Lab | AI分析用データ出力</title>
+<style>
+:root{color-scheme:light;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",sans-serif;background:#f5f8f5;color:#20342b}
+*{box-sizing:border-box}body{margin:0;padding:20px max(16px,env(safe-area-inset-right)) 50px max(16px,env(safe-area-inset-left))}
+main{max-width:740px;margin:auto}h1{font-size:1.35rem;margin:9px 0}h2{font-size:1.02rem;margin:0 0 12px}.muted{color:#65786d;font-size:.9rem;line-height:1.65}
+.card{background:#fff;border:1px solid #dfe8e1;border-radius:19px;padding:18px;margin:14px 0;box-shadow:0 2px 12px #1a40200a}
+button,.link{border:0;background:#246f53;color:white;padding:13px 17px;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;display:inline-block;text-decoration:none}
+button.secondary{background:#e5eee8;color:#205239}button:disabled{opacity:.45} .actions{display:flex;gap:9px;flex-wrap:wrap}
+label.item{display:flex;gap:12px;align-items:flex-start;padding:12px 2px;border-bottom:1px solid #edf1ed;overflow-wrap:anywhere}
+label.item:last-child{border:0}input[type=checkbox]{width:21px;height:21px;accent-color:#246f53;flex-shrink:0}
+small{color:#6a7b70}pre{background:#f4f7f4;border-radius:12px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font-size:.78rem}
+#status{min-height:23px;color:#246f53;overflow-wrap:anywhere}.warn{color:#8e5a22}
+textarea{width:100%;min-height:160px;border:1px solid #cbd8cd;border-radius:12px;padding:11px;font-size:.85rem}
+a{color:#246f53}.tag{font-size:.73rem;background:#eaf2eb;padding:3px 8px;border-radius:8px;color:#336246}
+</style></head>
+<body><main>
+<a href="./index.html">← Nutrition Labに戻る</a>
+<h1>AI分析用データ出力 <span class="tag">試験版 v0.1</span></h1>
+<p class="muted">このページは同じSafari・同じサイトに保存された記録を読み取り、AIへ渡すためのデータを生成します。記録の変更・削除・外部送信は行いません。</p>
+<section class="card"><h2>1. 保存データの確認</h2>
+<p class="muted">Nutrition Labで食事記録を入力したSafariから開いてください。プライベートブラウズや別のブラウザでは記録が見つからない場合があります。</p>
+<div class="actions"><button id="scan">保存データを調べる</button><button id="choose" class="secondary" type="button">候補をすべて選択</button></div>
+<p id="status" role="status"></p><div id="keys"></div></section>
+<section class="card"><h2>2. 書き出し内容</h2>
+<label class="item"><input type="checkbox" id="prompt" checked><span>AIへの分析指示を同梱する</span></label>
+<label class="item"><input type="checkbox" id="allkeys"><span>すべての保存項目を表示する（設定や個人情報が含まれる場合があります）</span></label>
+<div class="actions"><button id="prepare">選択データを生成</button></div>
+<p class="muted">保存形式は元のデータ構造を保持するJSONです。食品名や摂取量の自動判定は、元の記録形式を確認してから追加します。</p>
+<textarea id="output" readonly placeholder="ここに出力データが表示されます" aria-label="生成したJSON"></textarea>
+<div class="actions" style="margin-top:12px"><button id="copy">コピー</button><button id="download" class="secondary">JSONを保存</button><button id="share" class="secondary">iPhoneの共有メニュー</button></div></section>
+<section class="card"><h2>3. ChatGPTで分析</h2><p class="muted">「コピー」を押してChatGPTに貼り付けるか、JSONファイルを保存してChatGPTに添付してください。大量のデータはファイル添付がおすすめです。</p>
+<p class="warn">注意：病歴・氏名・住所などは必要なとき以外含めないでください。AIは未記録を摂取ゼロと判断してはいけません。欠測値をゼロに置き換えないでください。</p></section>
+</main>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id), state={items:[],output:''};
+const instruction='次のNutrition Labの実際の記録を分析してください。まずデータ形式を確認し、食品名・量・日時・栄養素を抽出できる範囲だけ示してください。元データが未構造化または不明な場合は推測して数値を作らないでください。未記録と摂取ゼロ、欠測と真のゼロ、100g当たりの成分値と摂取量換算値を区別してください。分析可能なら食事別・日別の傾向、栄養素の食品別寄与を示してください。年齢・性別など適切な条件がない場合は栄養の不足・過剰を断定しないでください。';
+const looksRelevant=k=>/nutri|food|meal|diet|intake|record|log|history|食|栄養|献立/i.test(k);
+const sensitive=k=>/token|secret|password|auth|session|credential|api.?key/i.test(k);
+function status(m){$('status').textContent=m;}
+function scan(){
+ const keep=new Set([...document.querySelectorAll('input[data-storage]:checked')].map(x=>x.dataset.storage));
+ state.items=[];const all=$('allkeys').checked;
+ try{for(let i=0;i<localStorage.length;i++){let key=localStorage.key(i);if(!key||sensitive(key)||(!all&&!looksRelevant(key)))continue;
+ let value=localStorage.getItem(key)||'', parsed;try{parsed=JSON.parse(value)}catch{parsed=value}
+ state.items.push({key,value,parsed});}}catch(e){status('保存データを取得できません: '+e.message);return}
+ state.items.sort((a,b)=>a.key.localeCompare(b.key));
+ $('keys').replaceChildren();
+ for(const item of state.items){
+ const row=document.createElement('label');row.className='item';
+ const input=document.createElement('input');input.type='checkbox';input.dataset.storage=item.key;input.checked=keep.size?keep.has(item.key):looksRelevant(item.key);
+ const body=document.createElement('span');const name=document.createElement('strong');name.textContent=item.key;
+ const detail=document.createElement('small');detail.textContent='\n'+item.value.length.toLocaleString()+'文字 / '+(Array.isArray(item.parsed)?'配列 '+item.parsed.length+'件':item.parsed!==null&&typeof item.parsed==='object'?'オブジェクト':'テキスト');
+ detail.style.whiteSpace='pre-line';body.append(name,detail);row.append(input,body);$('keys').append(row);
+ }
+ status(state.items.length?'候補 '+state.items.length+' 件が見つかりました。内容を確認して選択してください。':'候補が見つかりません。Nutrition Labで記録を入力後、同じSafariで再度開いてください。');
+}
+function prepare(){
+ const selected=new Set([...document.querySelectorAll('input[data-storage]:checked')].map(x=>x.dataset.storage));
+ if(!selected.size){status('少なくとも1つのデータ項目を選んでください。');return}
+ const entries=state.items.filter(x=>selected.has(x.key)).map(x=>({storageKey:x.key,data:x.parsed}));
+ const payload={schemaVersion:'nutrition-lab-raw-export/0.1',exportedAt:new Date().toISOString(),source:'Nutrition Lab (same-origin browser storage)',dataInterpretation:'Raw storage values, not validated nutrient totals',recordingCaveat:'Missing records must not be treated as zero consumption',entries};
+ if($('prompt').checked)payload.aiInstruction=instruction;
+ state.output=JSON.stringify(payload,null,2);$('output').value=state.output;
+ status('選択した '+entries.length+' 項目を生成しました。内容を確認してから共有してください。');
+}
+$('scan').addEventListener('click',scan);
+$('allkeys').addEventListener('change',scan);
+$('choose').addEventListener('click',()=>{document.querySelectorAll('input[data-storage]').forEach(x=>x.checked=true)});
+$('prepare').addEventListener('click',prepare);
+$('copy').addEventListener('click',async()=>{if(!state.output)return status('先にデータを生成してください。');try{await navigator.clipboard.writeText(state.output);status('コピーしました。ChatGPTに貼り付けられます。')}catch{ $('output').focus();$('output').select();status('コピーできないため、テキストを選択しました。手動でコピーしてください。')}});
+$('download').addEventListener('click',()=>{if(!state.output)return status('先にデータを生成してください。');let blob=new Blob([state.output],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='nutrition-lab-ai-export-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);});
+$('share').addEventListener('click',async()=>{if(!state.output)return status('先にデータを生成してください。');try{if(navigator.share){let f=new File([state.output],'nutrition-lab-ai-export.json',{type:'application/json'});if(navigator.canShare?.({files:[f]}))await navigator.share({files:[f],title:'Nutrition Lab AIデータ'});else await navigator.share({text:state.output,title:'Nutrition Lab AIデータ'});}else status('共有メニューは利用できません。「JSONを保存」をお使いください。');}catch(e){if(e.name!=='AbortError')status('共有できませんでした: '+e.message);}});
+scan();
+})();
+</script></body></html>
