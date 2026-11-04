@@ -17,8 +17,8 @@ a{color:#246f53}.tag{font-size:.73rem;background:#eaf2eb;padding:3px 8px;border-
 </style></head>
 <body><main>
 <a href="./index.html">← Nutrition Labに戻る</a>
-<h1>AI分析用データ出力 <span class="tag">試験版 v0.1</span></h1>
-<p class="muted">このページは同じSafari・同じサイトに保存された記録を読み取り、AIへ渡すためのデータを生成します。記録の変更・削除・外部送信は行いません。</p>
+<h1>AI分析用データ出力 <span class="tag">試験版 v0.2</span></h1>
+<p class="muted">このページは同じNutrition Labアプリ内に保存された記録（IndexedDBを優先）を読み取り、AIへ渡すためのデータを生成します。記録の変更・削除・外部送信は行いません。</p>
 <section class="card"><h2>1. 保存データの確認</h2>
 <p class="muted">Nutrition Labで食事記録を入力したSafariから開いてください。プライベートブラウズや別のブラウザでは記録が見つからない場合があります。</p>
 <div class="actions"><button id="scan">保存データを調べる</button><button id="choose" class="secondary" type="button">候補をすべて選択</button></div>
@@ -40,28 +40,71 @@ const instruction='次のNutrition Labの実際の記録を分析してくださ
 const looksRelevant=k=>/nutri|food|meal|diet|intake|record|log|history|食|栄養|献立/i.test(k);
 const sensitive=k=>/token|secret|password|auth|session|credential|api.?key/i.test(k);
 function status(m){$('status').textContent=m;}
-function scan(){
+// Nutrition Lab uses IndexedDB as the primary storage and localStorage as a legacy fallback.
+// Both are read without modifying the user's saved data.
+async function readPrimaryRecord(){
+ if(!('indexedDB' in window))return null;
+ return await new Promise(resolve=>{
+  let req,finished=false;
+  const finish=value=>{if(!finished){finished=true;resolve(value);}};
+  try{req=indexedDB.open('nutrition-lab-data',1);}catch{return finish(null);}
+  req.onupgradeneeded=()=>{try{req.transaction.abort();}catch{}};
+  req.onerror=()=>finish(null);
+  req.onblocked=()=>finish(null);
+  req.onsuccess=()=>{
+   const db=req.result;
+   if(!db.objectStoreNames.contains('records')){db.close();return finish(null);}
+   try{
+    const tx=db.transaction('records','readonly'),get=tx.objectStore('records').get('current');
+    get.onsuccess=()=>{const value=get.result??null;db.close();finish(value);};
+    get.onerror=()=>{db.close();finish(null);};
+    tx.onabort=()=>{db.close();finish(null);};
+   }catch{db.close();finish(null);}
+  };
+ });
+}
+let scanVersion=0;
+async function scan(){
+ const version=++scanVersion;
  const keep=new Set([...document.querySelectorAll('input[data-storage]:checked')].map(x=>x.dataset.storage));
- state.items=[];const all=$('allkeys').checked;
- try{for(let i=0;i<localStorage.length;i++){let key=localStorage.key(i);if(!key||sensitive(key)||(!all&&!looksRelevant(key)))continue;
- let value=localStorage.getItem(key)||'', parsed;try{parsed=JSON.parse(value)}catch{parsed=value}
- state.items.push({key,value,parsed});}}catch(e){status('保存データを取得できません: '+e.message);return}
- state.items.sort((a,b)=>a.key.localeCompare(b.key));
+ state.items=[];state.output='';$('output').value='';
+ const all=$('allkeys').checked;
+ status('保存データを確認しています…');
+ try{for(let i=0;i<localStorage.length;i++){
+   let key=localStorage.key(i);
+   if(!key||sensitive(key)||(!all&&!looksRelevant(key)))continue;
+   let value=localStorage.getItem(key)||'',parsed;
+   try{parsed=JSON.parse(value)}catch{parsed=value}
+   state.items.push({key,value,parsed});
+  }
+ }catch(e){status('ブラウザ保存データを取得できません: '+e.message);}
+ const saved=await readPrimaryRecord();
+ if(version!==scanVersion)return;
+ const idbKey='nutrition-lab-data / records / current';
+ if(saved!==null){
+  let parsed=saved;try{if(typeof saved==='string')parsed=JSON.parse(saved)}catch{}
+  const value=typeof saved==='string'?saved:JSON.stringify(saved);
+  state.items.push({key:idbKey,value,parsed});
+ }
+ state.items.sort((a,b)=>a.key===idbKey?-1:b.key===idbKey?1:a.key.localeCompare(b.key));
+ const hasPrimary=state.items.some(x=>x.key===idbKey);
  $('keys').replaceChildren();
  for(const item of state.items){
- const row=document.createElement('label');row.className='item';
- const input=document.createElement('input');input.type='checkbox';input.dataset.storage=item.key;input.checked=keep.size?keep.has(item.key):looksRelevant(item.key);
- const body=document.createElement('span');const name=document.createElement('strong');name.textContent=item.key;
- const detail=document.createElement('small');detail.textContent='\n'+item.value.length.toLocaleString()+'文字 / '+(Array.isArray(item.parsed)?'配列 '+item.parsed.length+'件':item.parsed!==null&&typeof item.parsed==='object'?'オブジェクト':'テキスト');
- detail.style.whiteSpace='pre-line';body.append(name,detail);row.append(input,body);$('keys').append(row);
+  const row=document.createElement('label');row.className='item';
+  const input=document.createElement('input');input.type='checkbox';input.dataset.storage=item.key;
+  input.checked=keep.size?keep.has(item.key):hasPrimary?item.key===idbKey:item.key==='nutrition-lab:v1';
+  const body=document.createElement('span');const name=document.createElement('strong');name.textContent=item.key;
+  const detail=document.createElement('small');
+  detail.textContent='\\n'+item.value.length.toLocaleString()+'文字 / '+(Array.isArray(item.parsed)?'配列 '+item.parsed.length+'件':item.parsed!==null&&typeof item.parsed==='object'?'オブジェクト':'テキスト');
+  detail.style.whiteSpace='pre-line';body.append(name,detail);row.append(input,body);$('keys').append(row);
  }
- status(state.items.length?'候補 '+state.items.length+' 件が見つかりました。内容を確認して選択してください。':'候補が見つかりません。Nutrition Labで記録を入力後、同じSafariで再度開いてください。');
+ status(hasPrimary?'Nutrition Labの保存記録（IndexedDB）が見つかりました。通常は先頭の項目だけを選んでください。':state.items.length?'候補 '+state.items.length+' 件が見つかりました。記録データを選んでください。':'記録が見つかりません。同じアプリ画面で食事を記録した後、もう一度お試しください。');
 }
 function prepare(){
  const selected=new Set([...document.querySelectorAll('input[data-storage]:checked')].map(x=>x.dataset.storage));
  if(!selected.size){status('少なくとも1つのデータ項目を選んでください。');return}
  const entries=state.items.filter(x=>selected.has(x.key)).map(x=>({storageKey:x.key,data:x.parsed}));
- const payload={schemaVersion:'nutrition-lab-raw-export/0.1',exportedAt:new Date().toISOString(),source:'Nutrition Lab (same-origin browser storage)',dataInterpretation:'Raw storage values, not validated nutrient totals',recordingCaveat:'Missing records must not be treated as zero consumption',entries};
+ const payload={schemaVersion:'nutrition-lab-raw-export/0.2',exportedAt:new Date().toISOString(),source:'Nutrition Lab (same-origin browser storage)',dataInterpretation:'Raw storage values, not validated nutrient totals',recordingCaveat:'Missing records must not be treated as zero consumption',entries};
  if($('prompt').checked)payload.aiInstruction=instruction;
  state.output=JSON.stringify(payload,null,2);$('output').value=state.output;
  status('選択した '+entries.length+' 項目を生成しました。内容を確認してから共有してください。');
