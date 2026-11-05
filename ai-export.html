@@ -13,11 +13,11 @@ label.item:last-child{border:0}input[type=checkbox]{width:21px;height:21px;accen
 small{color:#6a7b70}pre{background:#f4f7f4;border-radius:12px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font-size:.78rem}
 #status{min-height:23px;color:#246f53;overflow-wrap:anywhere}.warn{color:#8e5a22}
 textarea{width:100%;min-height:160px;border:1px solid #cbd8cd;border-radius:12px;padding:11px;font-size:.85rem}
-a{color:#246f53}.tag{font-size:.73rem;background:#eaf2eb;padding:3px 8px;border-radius:8px;color:#336246}
+a{color:#246f53}.tag{font-size:.73rem;background:#eaf2eb;padding:3px 8px;border-radius:8px;color:#336246}details.icloud-help{margin-top:17px;border-top:1px solid #e1e9e1;padding-top:13px}details.icloud-help summary{font-weight:650;cursor:pointer}details.icloud-help li{line-height:1.7;margin:6px 0}details.icloud-help p{margin:10px 0}
 </style></head>
 <body><main>
 <a href="./index.html">← Nutrition Labに戻る</a>
-<h1>AI分析用データ出力 <span class="tag">試験版 v0.2</span></h1>
+<h1>AI分析用データ出力 <span class="tag">試験版 v0.3</span></h1>
 <p class="muted">このページは同じNutrition Labアプリ内に保存された記録（IndexedDBを優先）を読み取り、AIへ渡すためのデータを生成します。記録の変更・削除・外部送信は行いません。</p>
 <section class="card"><h2>1. 保存データの確認</h2>
 <p class="muted">Nutrition Labで食事記録を入力したSafariから開いてください。プライベートブラウズや別のブラウザでは記録が見つからない場合があります。</p>
@@ -27,15 +27,21 @@ a{color:#246f53}.tag{font-size:.73rem;background:#eaf2eb;padding:3px 8px;border-
 <label class="item"><input type="checkbox" id="prompt" checked><span>AIへの分析指示を同梱する</span></label>
 <label class="item"><input type="checkbox" id="allkeys"><span>すべての保存項目を表示する（設定や個人情報が含まれる場合があります）</span></label>
 <div class="actions"><button id="prepare">選択データを生成</button></div>
-<p class="muted">保存形式は元のデータ構造を保持するJSONです。食品名や摂取量の自動判定は、元の記録形式を確認してから追加します。</p>
+<p class="muted">保存形式は元のデータ構造を保持するJSONです。これはAI分析用の書き出しであり、アプリの記録を復元するバックアップ形式とは異なります。食品名や摂取量の自動判定は今後追加します。</p>
 <textarea id="output" readonly placeholder="ここに出力データが表示されます" aria-label="生成したJSON"></textarea>
-<div class="actions" style="margin-top:12px"><button id="copy">コピー</button><button id="download" class="secondary">JSONを保存</button><button id="share" class="secondary">iPhoneの共有メニュー</button></div></section>
-<section class="card"><h2>3. ChatGPTで分析</h2><p class="muted">「コピー」を押してChatGPTに貼り付けるか、JSONファイルを保存してChatGPTに添付してください。大量のデータはファイル添付がおすすめです。</p>
+<div class="actions" style="margin-top:12px"><button id="icloud">iCloud Driveに保存（保存先を選ぶ）</button><button id="download" class="secondary">JSONをダウンロード</button><button id="copy" class="secondary">コピー</button></div>
+<details class="icloud-help"><summary>iPhoneでのiCloud Drive保存方法</summary>
+<ol><li>先に「選択データを生成」を押してください。</li><li>「iCloud Driveに保存」を押し、共有メニューに「ファイルに保存」があれば選択してください。</li><li>保存先で「iCloud Drive」を選び、「保存」を押してください。</li></ol>
+<p class="muted">「ファイルに保存」が表示されない場合は「JSONをダウンロード」を押してください。iPhoneの「設定」→「アプリ」→「Safari」→「ダウンロード」で保存先を「iCloud Drive」に設定すると、通常はiCloud Driveの「ダウンロード」に入ります。ブラウザから保存先を自動的に指定することはできません。</p>
+<p class="muted">整理用のフォルダ名は「Nutrition Lab / AI Exports」がおすすめです。必要なら「ファイル」アプリから移動してください。</p>
+</details></section>
+<section class="card"><h2>3. ChatGPTで分析</h2><p class="muted">iCloud Driveに保存したJSONファイルは、iPhoneのChatGPTから「ファイルを追加」で添付できます。大量のデータはコピーよりファイル添付がおすすめです。<strong>iCloudへ保存するだけではAIへデータは送信されません。</strong></p>
 <p class="warn">注意：病歴・氏名・住所などは必要なとき以外含めないでください。AIは未記録を摂取ゼロと判断してはいけません。欠測値をゼロに置き換えないでください。</p></section>
 </main>
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id), state={items:[],output:''};
+function exportFileName(){const d=new Date(),pad=n=>String(n).padStart(2,'0');return 'nutrition-lab-ai-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds())+'.json';}
 const instruction='次のNutrition Labの実際の記録を分析してください。まずデータ形式を確認し、食品名・量・日時・栄養素を抽出できる範囲だけ示してください。元データが未構造化または不明な場合は推測して数値を作らないでください。未記録と摂取ゼロ、欠測と真のゼロ、100g当たりの成分値と摂取量換算値を区別してください。分析可能なら食事別・日別の傾向、栄養素の食品別寄与を示してください。年齢・性別など適切な条件がない場合は栄養の不足・過剰を断定しないでください。';
 const looksRelevant=k=>/nutri|food|meal|diet|intake|record|log|history|食|栄養|献立/i.test(k);
 const sensitive=k=>/token|secret|password|auth|session|credential|api.?key/i.test(k);
@@ -114,8 +120,28 @@ $('allkeys').addEventListener('change',scan);
 $('choose').addEventListener('click',()=>{document.querySelectorAll('input[data-storage]').forEach(x=>x.checked=true)});
 $('prepare').addEventListener('click',prepare);
 $('copy').addEventListener('click',async()=>{if(!state.output)return status('先にデータを生成してください。');try{await navigator.clipboard.writeText(state.output);status('コピーしました。ChatGPTに貼り付けられます。')}catch{ $('output').focus();$('output').select();status('コピーできないため、テキストを選択しました。手動でコピーしてください。')}});
-$('download').addEventListener('click',()=>{if(!state.output)return status('先にデータを生成してください。');let blob=new Blob([state.output],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='nutrition-lab-ai-export-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);});
-$('share').addEventListener('click',async()=>{if(!state.output)return status('先にデータを生成してください。');try{if(navigator.share){let f=new File([state.output],'nutrition-lab-ai-export.json',{type:'application/json'});if(navigator.canShare?.({files:[f]}))await navigator.share({files:[f],title:'Nutrition Lab AIデータ'});else await navigator.share({text:state.output,title:'Nutrition Lab AIデータ'});}else status('共有メニューは利用できません。「JSONを保存」をお使いください。');}catch(e){if(e.name!=='AbortError')status('共有できませんでした: '+e.message);}});
+function downloadJson(){
+ if(!state.output)return status('先にデータを生成してください。');
+ const blob=new Blob([state.output],{type:'application/json;charset=utf-8'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download=exportFileName();a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),3000);
+ status('JSONをダウンロードしました。保存先はSafariの設定を確認してください。');
+}
+$('download').addEventListener('click',downloadJson);
+$('icloud').addEventListener('click',async()=>{
+ if(!state.output)return status('先にデータを生成してください。');
+ const file=new File([state.output],exportFileName(),{type:'application/json'});
+ if(typeof navigator.share!=='function'||typeof navigator.canShare!=='function'||!navigator.canShare({files:[file]})){
+  status('このブラウザではファイルの共有が利用できません。「JSONをダウンロード」を押し、iCloud Driveに保存してください。');return;
+ }
+ try{
+  await navigator.share({files:[file],title:'Nutrition Lab AI分析用データ'});
+  status('共有メニューを閉じました。iCloud Driveの「ファイル」アプリで保存結果をご確認ください。');
+ }catch(e){
+  if(e.name!=='AbortError')status('共有できませんでした。「JSONをダウンロード」をお試しください。');
+ }
+});
 scan();
 })();
 </script></body></html>
