@@ -59,7 +59,7 @@ a.ai-export-entry:hover{background:#dceee0}
 </main>
 <div class="toast" id="toast" role="status" hidden></div>
 <dialog id="food-dialog"><form method="dialog" class="dialog-header"><h2 id="food-dialog-title">食品の設定</h2><button aria-label="閉じる">×</button></form><p id="food-fullname" class="full-name"></p><p id="food-source-info" class="hint"></p><label>1タップの標準量（可食部 g）<input id="portion-input" type="number" min="0.1" max="100000" step="0.1"></label><label>食品の分類<select id="manual-rank"><option value="auto">自動分類にまかせる</option><option value="1">第1軍</option><option value="2">第2軍</option><option value="3">第3軍</option><option value="4">第4軍</option></select></label><p id="rank-explain" class="hint"></p><button id="food-settings-save" class="primary wide">設定を保存</button><details><summary>100gあたりの成分値</summary><div id="food-values"></div></details></dialog>
-<dialog id="settings-dialog"><form method="dialog" class="dialog-header"><h2>設定・バックアップ</h2><button aria-label="閉じる">×</button></form><h3>使うほど、選びやすく。</h3><p class="hint">初記録で第3軍、異なる2食で第2軍、30日間で指定回数に達すると第1軍へ。第1軍は期間経過だけでは降格しません。履歴の削除・修正では再計算します。手動分類は優先されます。</p><label>第1軍への昇格回数（2〜100食）<input id="threshold" type="number" min="2" max="100" step="1"></label><button id="threshold-save">昇格設定を保存</button><hr><h3>大切な記録を手元に。</h3><p class="hint">記録はこのブラウザ内のデータベースに保存します（利用できない場合は従来の保存方式）。ファイルの移動やブラウザの変更で引き継がれない場合があるため、JSONを定期的に保存してください。授業用実験とAI接続設定はバックアップ対象外です。</p><button id="export-original" class="wide" hidden>元の保存内容を救出（未加工の原文）</button><button id="export" class="primary wide">JSONバックアップを書き出す</button><button type="button" id="export-ai-detailed" class="primary wide">AI詳細レポート（43成分）をiCloudへ保存</button><p class="hint">食品別・食事別・日別に集計した分析専用JSONです。iPhoneの共有メニューから「ファイルに保存」→「iCloud Drive」を選べます。元の記録は変更しません。</p><p class="hint">AIに摂取状況を分析させたい場合はこちらから書き出せます。</p><a class="ai-export-entry" href="./ai-export.html">AI分析用データを出力する →</a><label class="file-label">JSONから記録を復元<input id="import" type="file" accept=".json,application/json"></label><p class="hint">読み込み後に内容を確認し、復元ボタンで現在の記録を置き換えます。</p><div id="import-preview" hidden><p id="import-summary"></p><button id="import-apply" class="primary wide">この内容で復元する</button></div><hr><details><summary>データ出典・成分の読み方</summary><div id="data-notes"></div></details></dialog>
+<dialog id="settings-dialog"><form method="dialog" class="dialog-header"><h2>設定・バックアップ</h2><button aria-label="閉じる">×</button></form><h3>使うほど、選びやすく。</h3><p class="hint">初記録で第3軍、異なる2食で第2軍、30日間で指定回数に達すると第1軍へ。第1軍は期間経過だけでは降格しません。履歴の削除・修正では再計算します。手動分類は優先されます。</p><label>第1軍への昇格回数（2〜100食）<input id="threshold" type="number" min="2" max="100" step="1"></label><button id="threshold-save">昇格設定を保存</button><hr><h3>大切な記録を手元に。</h3><p class="hint">記録はこのブラウザ内のデータベースに保存します（利用できない場合は従来の保存方式）。ファイルの移動やブラウザの変更で引き継がれない場合があるため、JSONを定期的に保存してください。授業用実験とAI接続設定はバックアップ対象外です。</p><button id="export-original" class="wide" hidden>元の保存内容を救出（未加工の原文）</button><button id="export" class="primary wide">JSONバックアップを書き出す</button><label for="ai-export-period">AI詳細解析の対象期間<select id="ai-export-period"><option value="7">直近7日</option><option value="30" selected>直近30日</option><option value="90">直近90日</option><option value="all">全記録</option></select></label><button type="button" id="export-ai-detailed" class="primary wide">AI詳細レポート（43成分）をiCloudへ保存</button><p class="hint">食品別・食事別・日別に集計した分析専用JSONです。iPhoneの共有メニューから「ファイルに保存」→「iCloud Drive」を選べます。元の記録は変更しません。</p><p class="hint">AIに摂取状況を分析させたい場合はこちらから書き出せます。</p><a class="ai-export-entry" href="./ai-export.html">AI分析用データを出力する →</a><label class="file-label">JSONから記録を復元<input id="import" type="file" accept=".json,application/json"></label><p class="hint">読み込み後に内容を確認し、復元ボタンで現在の記録を置き換えます。</p><div id="import-preview" hidden><p id="import-summary"></p><button id="import-apply" class="primary wide">この内容で復元する</button></div><hr><details><summary>データ出典・成分の読み方</summary><div id="data-notes"></div></details></dialog>
 <dialog id="history-dialog"><form method="dialog" class="dialog-header"><h2>食事履歴</h2><button aria-label="閉じる">×</button></form><p class="hint">日付と食事を選ぶと、当時の記録を表示・編集できます。</p><div id="history-list"></div></dialog>
 <dialog id="ai-dialog"><form method="dialog" class="dialog-header"><h2>Ollamaで振り返る</h2><button aria-label="閉じる">×</button></form><p class="hint">任意機能です。実行すると、表示範囲の食品名・重量・成分集計だけを指定したローカルOllamaへ送信します。氏名や全履歴は送りません。</p><label>ローカル接続先<input id="ai-url" type="url" value="http://localhost:11434" spellcheck="false"></label><label>インストール済みモデル名<input id="ai-model" type="text" placeholder="例：qwen3:8b" spellcheck="false"></label><button id="ai-run" class="primary wide">表示中の食事を送信して分析</button><p id="ai-status" role="status"></p><div id="ai-result" class="ai-result"></div><details><summary>接続できない場合</summary><p class="hint">Ollamaを起動し、モデルを準備してください。ブラウザからの接続にはOllama側の許可（OLLAMA_ORIGINS）が必要な場合があります。許可する接続元だけを指定し、設定後はOllamaを再起動してください。接続失敗時も食事記録は利用できます。</p></details></dialog>
 <dialog id="trend-dialog"><form method="dialog" class="dialog-header"><div><p class="eyebrow">YOUR NUTRITION JOURNEY</p><h2>栄養の変化</h2></div><button aria-label="閉じる">×</button></form>
@@ -328,7 +328,10 @@ function buildAiDetailedReport(){
  const nutrients=DATA.nutrients.map(n=>({key:n.key,label:n.label,unit:n.unit}));
  const ids=DATA.nutrients.map(n=>n.key);
  const categories={breakfast:'朝食',lunch:'昼食',dinner:'夕食',snack:'間食'};
- const mealKeys=[...new Set([...Object.keys(state.meals),...Object.keys(state.mealStatus||{})])].sort();
+ const period=$('#ai-export-period').value;
+ const today=localDate(),cutoff=period==='all'?null:iso(stamp(today)-(Number(period)-1)*DAY);
+ const inRange=d=>d<=today&&(!cutoff||d>=cutoff);
+ const mealKeys=[...new Set([...Object.keys(state.meals),...Object.keys(state.mealStatus||{})])].filter(k=>inRange(k.slice(0,10))).sort();
  const days=new Map();
  const shapeTotals=values=>Object.fromEntries(DATA.nutrients.map(n=>{
   const x=values[n.key];return [n.key,{value:x.known?Number(x.value.toPrecision(12)):null,unit:n.unit,knownFoods:x.known,missingFoods:x.missing,traceFoods:x.trace,estimatedFoods:x.estimated,partial:x.missing>0}];
@@ -357,6 +360,7 @@ function buildAiDetailedReport(){
   days.get(dateKey).meals.push({mealType:slotKey,label:categories[slotKey],recordStatus:status,foods:foodsForEntries(es),totals:es.length?shapeTotals(calculateTotals(es,db,ids,state.foodSnapshots)):null});
  }
  // A day total is a subtotal of entered foods, not a validated complete-day intake.
+ for(const dateKey of Object.keys(state.dayNotes||{})){if(inRange(dateKey)&&!days.has(dateKey))days.set(dateKey,{date:dateKey,note:state.dayNotes[dateKey],meals:[]});}
  const dayReports=[...days.values()].sort((a,b)=>a.date.localeCompare(b.date)).map(d=>{
   const entries=d.meals.filter(m=>m.recordStatus!=='skipped').flatMap(m=>m.foods.map(f=>({foodId:f.foodId,grams:f.grams,snapshotId:f.snapshotId||undefined})));
   const tracked=new Set(d.meals.map(m=>m.mealType));
@@ -364,13 +368,55 @@ function buildAiDetailedReport(){
    daySubtotal:entries.length?shapeTotals(calculateTotals(entries,db,ids,state.foodSnapshots)):null,
    completeness:'Only recorded meals included; missing meal records are unknown intake.'};
  });
- return {schemaVersion:'nutrition-lab-ai-detailed/1.0',exportedAt:new Date().toISOString(),
+ // Descriptive statistics use only fully documented days with nutrient data and no missing source values.
+ const quantile=(sorted,p)=>{if(!sorted.length)return null;const pos=(sorted.length-1)*p,lo=Math.floor(pos),hi=Math.ceil(pos);return sorted[lo]+(sorted[hi]-sorted[lo])*(pos-lo);};
+ const completeDays=dayReports.filter(d=>dayComplete(state,d.date));
+ const partialDays=dayReports.filter(d=>!dayComplete(state,d.date));
+ const stats=Object.fromEntries(DATA.nutrients.map(n=>{
+  const all=completeDays.map(d=>d.daySubtotal?.[n.key]);
+  const valid=all.filter(x=>x&&x.value!==null&&!x.partial).map(x=>x.value).sort((a,b)=>a-b);
+  const mean=valid.length?valid.reduce((a,b)=>a+b,0)/valid.length:null;
+  const sd=valid.length>1?Math.sqrt(valid.reduce((sum,x)=>sum+(x-mean)**2,0)/(valid.length-1)):null;
+  return [n.key,{unit:n.unit,daysComplete:completeDays.length,daysUsable:valid.length,
+   daysExcludedMissing:all.filter(x=>!x||x.value===null||x.partial).length,
+   mean,median:quantile(valid,.5),p25:quantile(valid,.25),p75:quantile(valid,.75),
+   min:valid[0]??null,max:valid.at(-1)??null,sampleSD:sd,
+   coefficientOfVariationPercent:mean!==null&&mean>0&&sd!==null?sd/mean*100:null,
+   interpretation:'Descriptive statistics of complete days without missing nutrient values only; not a validated usual-intake estimate.'}];
+ }));
+ const contributorTotals=Object.fromEntries(DATA.nutrients.map(n=>{
+  const byFood=new Map();let sum=0;
+  for(const d of completeDays)for(const meal of d.meals)for(const food of meal.foods){
+   const x=food.nutrients?.[n.key];
+   if(!x||x.isMissing||x.isTrace||typeof x.value!=='number')continue;
+   const prev=byFood.get(food.foodId)||{foodId:food.foodId,name:food.name,amount:0};
+   prev.amount+=x.value;sum+=x.value;byFood.set(food.foodId,prev);
+  }
+  const ranking=[...byFood.values()].sort((a,b)=>b.amount-a.amount).slice(0,15);
+  return [n.key,{unit:n.unit,denominator:'Known numeric contributions on complete days only; trace and missing quantities excluded',
+   totalKnownNumericContribution:sum,foods:ranking.map(f=>({...f,shareOfKnownPercent:sum>0?100*f.amount/sum:null}))}];
+ }));
+ const timeCoverage={requestedPeriod:period==='all'?'all':Number(period),calendarStart:cutoff,calendarEnd:today,
+  datesWithAnyRecord:dayReports.length,completeDays:completeDays.length,partialRecordedDays:partialDays.length,
+  completionRule:'Four meal slots must each be marked recorded or explicitly skipped. Not proof of dietary recall accuracy.',
+  coverageWarning:'Even complete days may omit unreported food, beverages, supplements and portion estimation error.'};
+ const criticalWarnings=[
+  'Not validated for clinical diagnosis or individual nutrient deficiency.',
+  'Food composition describes ingested nutrient estimates, not absorption, bioavailability or biological status.',
+  'Missing foods/meal entries and missing nutrient composition are different kinds of missingness.',
+  'For nutrients with trace flags, display trace semantically rather than assuming an exact zero.',
+  'No DRI/RDA/EAR/UL comparison is performed without individual context, age/sex, pregnancy status, relevant policies and current authoritative standards.',
+  'Food composition values and stored snapshots are not food weights measured with laboratory uncertainty.',
+  'An arithmetic mean of observed complete days is not an estimate of habitual intake without sampling adequacy.',
+  'Percent food-source contributions use known numeric values only and may not sum to actual total intake.'
+ ];
+ return {schemaVersion:'nutrition-lab-ai-detailed/1.1',exportedAt:new Date().toISOString(),
   generatedBy:'Nutrition Lab',foodDatabase:{title:DATA.source.title,sha256:DATA.source.sha256},
-  scope:'all recorded dates',nutrients,days:dayReports,
+  scope:period==='all'?'all recorded dates':'last '+period+' calendar days',nutrients,days:dayReports,periodStatistics:stats,foodSourceContributions:contributorTotals,timeCoverage,scientificLimitations:criticalWarnings,
   recordingRules:{unrecordedMeal:'unknown, not zero',skippedMeal:'explicitly marked skipped',noRecordedFood:'unknown unless specifically marked skipped',
    missingNutrient:'null, never zero',traceNutrient:'0 numeric approximation with trace flag; do not infer an exact zero',
    estimatedNutrient:'value retains estimated flag',subtotal:'not a complete daily intake unless all meals are known'},
-  analysisInstructions:'記録済み食品の摂取量と43栄養成分を食品別・食事別・日別に整理してください。未記録の日や食事は摂取ゼロと扱わないでください。微量・推定・欠測の印を尊重し、欠測をゼロで補完しないでください。日別集計はあくまで記録分の小計です。プロフィールや適切な基準値なしに不足・過剰を断定しないでください。'};
+  analysisInstructions:'記録済み食品の摂取量と43栄養成分を食品別・食事別・日別に整理してください。期間別の有効日数、平均・中央値・四分位範囲・標本標準偏差と食品別寄与率を検討し、分母と除外日数を必ず示してください。未記録の日や食事は摂取ゼロと扱わないでください。微量・推定・欠測の印を尊重し、欠測をゼロで補完しないでください。日別集計はあくまで記録分の小計です。プロフィールや適切な基準値なしに不足・過剰を断定しないでください。'};
 }
 $('#export-ai-detailed').onclick=async()=>{
  const report=buildAiDetailedReport();
